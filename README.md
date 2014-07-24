@@ -9,7 +9,7 @@ Read more about elasticsearch at http://www.elasticsearch.org/overview/elasticse
 
 ## How to install
 
-Download the latest release and upload the zip as a plugin to your Mura installation.
+[Download the latest release](https://github.com/binaryvision/mura-elasticsearch/releases) and upload the zip as a plugin to your Mura installation.
 
 ## How to contribute
 
