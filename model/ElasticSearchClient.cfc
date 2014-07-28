@@ -1,0 +1,229 @@
+component accessors=true {
+    property name="HttpRequestService";
+
+    function init(required host) {
+        variables.host = arguments.host;
+    }
+
+    function search(
+        required body,
+        index="",
+        type=""
+    ) {
+        if (not len(index) and len(type)) index = "*";
+
+        return makeHttpRequest(
+            method="post",
+            url=createUrl(index, type, "_search"),
+            body=body
+        );
+    }
+
+    /*** INDEX METHODS ******************************************************/
+
+    function createIndex(
+        required name,
+        body=""
+    ) {
+        return makeHttpRequest(
+            method="put",
+            url=createUrl(name),
+            body=body
+        );
+    }
+
+    function deleteIndex(
+        required name
+    ) {
+        return makeHttpRequest(
+            method="delete",
+            url=createUrl(name)
+        );
+    }
+
+    function indexExists(
+        required name
+    ) {
+        return makeHttpRequest(
+            method="head",
+            url=createUrl(name)
+        ).getStatusCode() eq 200;
+    }
+
+    function refreshIndex(
+        name=""
+    ) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl(name, "_refresh")
+        );
+    }
+
+    /*** ALIAS METHODS ******************************************************/
+
+    function createAlias(
+        required name,
+        required index
+    ) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl("_aliases"),
+            body={
+                "actions"=[
+                    {"add"= {"index"=index, "alias"=name}}
+                ]
+            }
+        );
+    }
+
+    function removeAlias(
+        required name,
+        index="_all"
+    ) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl("_aliases"),
+            body={
+                "actions"=[
+                    {"remove"= {"index"=index, "alias"=name}}
+                ]
+            }
+        );
+    }
+
+    function changeAlias(
+        required name,
+        required index,
+        previousIndex="_all"
+    ) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl("_aliases"),
+            body={
+                "actions"=[
+                    {"remove" = {"index"=previousIndex, "alias"=name}},
+                    {"add" = {"index"=index, "alias"=name}}
+                ]
+            }
+        );
+    }
+
+    function updateAliases(required actions) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl("_aliases"),
+            body={
+                "actions"=actions
+            }
+        );
+    }
+
+    function getAliases(
+        index="",
+        alias=""
+    ) {
+        return makeHttpRequest(
+            method="get",
+            url=createUrl(index, "_alias", alias)
+        );
+    }
+
+    function aliasExists(
+        required name,
+        index=""
+    ) {
+        return makeHttpRequest(
+            method="head",
+            url=createUrl(index, "_alias", name)
+        ).getStatusCode() eq 200;
+    }
+
+    /*** DOCUMENT METHODS ***************************************************/
+
+    function insertDocument(
+        required index,
+        required type,
+        required id,
+        required body
+    ) {
+        return makeHttpRequest(
+            method="put",
+            url=createUrl(index, type, id),
+            body=body
+        );
+    }
+
+    function updateDocument(
+        required index,
+        required type,
+        required id,
+        required body
+    ) {
+        return makeHttpRequest(
+            method="post",
+            url=createUrl(index, type, id, "_update"),
+            body=body
+        );
+    }
+
+    function documentExists(
+        required index,
+        required type,
+        required id
+    ) {
+        return makeHttpRequest(
+            method="head",
+            url=createUrl(index, type, id)
+        ).getStatusCode() eq 200;
+    }
+
+    function removeDocument(
+        required index,
+        required type,
+        required id
+    ) {
+        return makeHttpRequest(
+            method="delete",
+            url=createUrl(index, type, id)
+        );
+    }
+
+    /*** BULK ***************************************************************/
+
+    function bulk(
+        required actions,
+        index="",
+        type=""
+    ) {
+        for (var i=1; i lte arrayLen(actions); i++) {
+            actions[i] = serializeJSON(actions[i]);
+        }
+
+        return makeHttpRequest(
+            method="post",
+            url=createUrl(index, type, "_bulk"),
+            body=arrayToList(actions, "\n")
+        );
+    }
+ 
+    /*** PRIVATE METHODS ****************************************************/
+
+    private function getHost() {
+        return variables.host;
+    }
+
+    private function createUrl() {
+        var href = getHost();
+
+        for(var param in arguments) {
+            if(len(arguments[param])) { href = listAppend(href, arguments[param], "/"); }
+        }
+
+        return href;
+    }
+
+    private function makeHttpRequest() {
+        return getHttpRequestService().request(argumentCollection=arguments);
+    }
+
+}
