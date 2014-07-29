@@ -2,7 +2,15 @@ component persistent="false" output="false" extends="mura.plugin.pluginGenericEv
 
     public void function onApplicationLoad(required struct $) {
         variables.pluginConfig.addEventHandler(this);
-        getServiceFactory().addBean("MuraElasticSearch", new MuraElasticSearch.MuraElasticSearch());
+        getServiceFactory().addBean("MuraElasticsearch", new MuraElasticsearch.MuraElasticsearch());
+    }
+
+    public void function onContentSave(required struct $) {
+        getBean("MuraElasticsearch").updateContent($.getContentBean());
+    }
+
+    public void function onContentDelete(required struct $) {
+        getBean("MuraElasticsearch").removeContent($.getContentBean());
     }
 
 }

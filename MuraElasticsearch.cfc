@@ -1,27 +1,47 @@
 component accessors=true {
-    property name="serviceFactory";
-    property name="parentServiceFactory";
+    property name="beanFactory";
+    property name="parentBeanFactory";
 
-    function init(parentServiceFactory) {
-        if (isDefined("arguments.parentServiceFactory"))
-            setParentServiceFactory(parentServiceFactory);
+    function init(parentBeanFactory) {
+        if (isDefined("arguments.parentBeanFactory"))
+            setParentBeanFactory(parentBeanFactory);
     }
 
-    function getServiceFactory() {
-        if (not isDefined("serviceFactory")) initServiceFactory();
+    function getBeanFactory() {
+        if (not isDefined("beanFactory")) initBeanFactory();
 
-        return serviceFactory;
+        return beanFactory;
     }
 
-    function initServiceFactory() {
-        serviceFactory = new vendor.ioc("/MuraElasticsearch/model", { singletonPattern = "(Service|Factory)$" });
+    function initBeanfactory() {
+        beanFactory = new vendor.ioc("/MuraElasticsearch/model", { singletonPattern = "(Service|Factory)$" });
         
-        if (isDefined("variables.parentServiceFactory"))
-            serviceFactory.setParent(getParentServiceFactory());
+        if (isDefined("variables.parentBeanFactory"))
+            beanFactory.setParent(getParentBeanFactory());
     }
 
     function getBean(required name) {
-        return getServiceFactory().getBean(name);
+        return getBeanFactory().getBean(name);
+    }
+
+    /** ACTIONS *************************************************************/
+
+    function refreshSiteIndex(required siteid) {
+        return getMuraIndex(siteid).refresh();
+    }
+
+    function updateContent(required content) {
+        return getMuraIndex(newContent.getSiteID()).update(content);
+    }
+
+    function removeContent(required content) {
+        return getMuraIndex(content.getSiteID()).remove(content);
+    }
+
+    /** PRIVATE *************************************************************/
+
+    private function getMuraIndex(required siteid) {
+        return getBean("MuraIndex").init(siteid); // maybe cache these?
     }
 
 }

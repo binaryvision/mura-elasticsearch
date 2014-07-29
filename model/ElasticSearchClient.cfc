@@ -8,14 +8,27 @@ component accessors=true {
     function search(
         required body,
         index="",
-        type=""
+        type="",
+        params=""
     ) {
         if (not len(index) and len(type)) index = "*";
 
+        if (isStruct(params)) params = structToQueryString(params);
+
         return makeHttpRequest(
             method="post",
-            url=createUrl(index, type, "_search"),
+            url=createUrl(index, type, "_search") & params,
             body=body
+        );
+    }
+
+    function searchScroll(
+        required scroll,
+        required scroll_id
+    ) {
+        return makeHttpRequest(
+            method="get",
+            url=createURL("_search", "scroll") & structToQueryString(arguments)
         );
     }
 
@@ -96,16 +109,10 @@ component accessors=true {
         required index,
         previousIndex="_all"
     ) {
-        return makeHttpRequest(
-            method="post",
-            url=createUrl("_aliases"),
-            body={
-                "actions"=[
-                    {"remove" = {"index"=previousIndex, "alias"=name}},
-                    {"add" = {"index"=index, "alias"=name}}
-                ]
-            }
-        );
+        return updateAliases([
+            {"remove" = {"index"=previousIndex, "alias"=name}},
+            {"add" = {"index"=index, "alias"=name}}
+        ]);
     }
 
     function updateAliases(required actions) {
@@ -118,7 +125,7 @@ component accessors=true {
         );
     }
 
-    function getAliases(
+    function getAlias(
         index="",
         alias=""
     ) {
@@ -224,6 +231,14 @@ component accessors=true {
 
     private function makeHttpRequest() {
         return getHttpRequestService().request(argumentCollection=arguments);
+    }
+
+    private function structToQueryString(required structure) {
+        var queryString = "";
+        for (var key in structure) {
+            listAppend(queryString, URLEncodedFormat(lcase(key)) & "=" & URLEncodedFormat(structure[key]), "&");
+        }
+        return "?" & queryString;
     }
 
 }
