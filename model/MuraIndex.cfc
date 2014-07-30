@@ -24,19 +24,29 @@ component accessors=true {
 
         try {
             var new_index = createNewIndex();
-            var batch = // find_content limit=batch_limit order_by=last_updated
 
-            while (batch.recordCount > 0) {
+            var batch = (
+                getBeanFactory().getBean("muraFeed")
+                    .setSiteID(getSiteID())
+                    .setSortBy("lastUpdate")
+                    .setSortDirection("asc")
+                    .setMaxItems(99999)
+                    .setNextN(batch_limit)
+                    .getIterator()
+            );
+
+            while (batch.getPageIndex() lte batch.pageCount()) {
                 var bulk_actions = [];
 
-                for (var i; i lt batch.recordCount; i++) {
-                    arrayAppend(bulk_actions, { "index" = { "_id" = "" } });
-                    arrayAppend(bulk_actions, {});
+                while (batch.hasNext()) {
+                    var content = batch.next();
+                    arrayAppend(bulk_actions, { "index" = { "_id" = content.getContentID() } });
+                    arrayAppend(bulk_actions, contentToJSON(content));
                 }
 
                 getElasticsearchClient().bulk(bulk_action, new_index, getMuraContentType());
 
-                var batch = // find_content limit=batch_limit order_by=last_updated where last_updated >= last_processed // reprocess just in case we have some with same last_updated and they happen to span a batch gap
+                batch.setPage(batch.getPageIndex() + 1);
             }
 
             completed = true;
@@ -49,49 +59,6 @@ component accessors=true {
                 structGet("application.elasticsearch_indexes.#getSiteID()#").finished = now();
             }
         }
-
-        /*
-            cflock refreshing siteid timeout=5 {
-                if (refreshing[siteid])
-                    return
-                else
-                    application.refreshing[siteid] = true // maybe have it as a struct with { started , finished }
-            }
-
-            completed = false
-
-            batch_limit = 200
-
-            try {
-                new_index = create_new_site_index // create and add to write_alias
-
-                batch = find_content limit=batch_limit order_by=last_updated
-
-                while batch.count > 0
-
-                    bulk_actions = []
-
-                    for content in batch
-
-                        bulk_actions << { index = { id = content.id } }
-                        bulk_actions << serialize(content)
-
-                        last_processed = content.last_updated
-
-                    client.bulk new_index type bulk_actions
-
-                    batch = find_content limit=batch_limit order_by=last_updated where last_updated >= last_processed // reprocess just in case we have some with same last_updated and they happen to span a batch gap
-
-                completed = true
-
-                change_site_alias new_index
-            finally {
-                if new_index
-                    unless completed delete_index new_index
-
-                application.refreshing[siteid] = false
-            }
-        */
     }
 
     function update(required content) {
@@ -106,7 +73,7 @@ component accessors=true {
                 type=getMuraContentType(),
                 id=content.getContentID(),
                 body=contentJSON
-            )
+            );
 
             if (filenameHasChanged) updateContentUsingOldFilename(index, content);
         }
@@ -115,7 +82,7 @@ component accessors=true {
     function remove(required content) {
         for (var index in getWriteAlias()) {
             getElasticsearchClient().removeDocument(
-                index=getAlias(),
+                index=getAliasName(),
                 type=getMuraContentType(),
                 id=content.getContentID()
             );
@@ -131,10 +98,42 @@ component accessors=true {
     }
 
     function getAlias() {
+        return structKeyArray(
+            getElasticsearchClient().getAlias(
+                alias=getAliasName()
+            ).toJSON()
+        );
+    }
+
+    function getAliasName() {
         return getSiteID();
     }
 
     /** PRIVATE *************************************************************/
+
+    private function createNewIndex() {
+        var newIndexName = getAliasName() & "_" & lcase(createUUID());
+        getElasticsearchClient().createIndex(newIndexName);
+        getElasticsearchClient().createAlias(getWriteAliasName(), newIndexName);
+        return newIndexName;
+    }
+
+    private function changeAlias(required newIndex) {
+        var actions = [];
+
+        // Is there a way to just say remove alias from all indexes?
+
+        for(var index in getAlias())
+            arrayAppend({ "remove" = { "index"=index, "alias"=getAliasName() } });
+
+        for(var index in getWriteAlias())
+            arrayAppend({ "remove" = { "index"=index, "alias"=getWriteAliasName() } });
+
+        arrayAppend({ "add" = { "index"=newIndex, "alias"=getWriteAliasName() } });
+        arrayAppend({ "add" = { "index"=newIndex, "alias"=getAliasName() } });
+
+        return getElasticsearchClient().updateAliases(actions);
+    }
 
     private function getConfig(required key, defaultValue='') {
         return getMuraUtils().getSiteConfig(
@@ -197,7 +196,7 @@ component accessors=true {
     }
 
     private function getWriteAliasName() {
-        return getAlias() & getWriteAliasSuffix();
+        return getAliasName() & getWriteAliasSuffix();
     }
 
     private function getWriteAliasSuffix() {
