@@ -1,11 +1,6 @@
 component accessors=true {
     property name="response";
 
-    function init(required response) {
-        setResponse(response);
-        return this;
-    }
-
     function isJSON() {
         if(not isDefined("responseIsJSON"))
             responseIsJSON = isJSON(getResponse().fileContent);

@@ -1,9 +1,6 @@
 component accessors=true {
+    property name="Host";
     property name="HttpRequestService";
-
-    function init(required host) {
-        variables.host = arguments.host;
-    }
 
     function search(
         required body,
@@ -203,13 +200,13 @@ component accessors=true {
         type=""
     ) {
         for (var i=1; i lte arrayLen(actions); i++) {
-            actions[i] = serializeJSON(actions[i]);
+            if (not isJSON(actions[i])) actions[i] = serializeJSON(actions[i]);
         }
 
         return makeHttpRequest(
             method="post",
             url=createUrl(index, type, "_bulk"),
-            body=arrayToList(actions, "\n")
+            body=arrayToList(actions, "#chr(10)#") & "#chr(10)#"
         );
     }
  

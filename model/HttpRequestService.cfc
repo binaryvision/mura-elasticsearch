@@ -35,7 +35,7 @@ component accessors=true {
         for (var key in headers)
             http.addParam(type="headers", name=key, value=headers[key]);
 
-        return getBeanFactory().getBean("httpResponse").init(http.send().getPrefix());
+        return getBeanFactory().getBean("httpResponse").setResponse(http.send().getPrefix());
     }
 
     function get() {

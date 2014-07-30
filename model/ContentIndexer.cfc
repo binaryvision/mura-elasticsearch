@@ -5,7 +5,8 @@ component {
     }
 
     function shouldIndex(required content) {
-        return content.getIsOnDisplay() and not content.getSearchExclude();
+        return true; // forgot to set my generated content to display=true
+        //return content.getIsOnDisplay() and not content.getSearchExclude();
     }
 
     function contentToJSON(required content) {

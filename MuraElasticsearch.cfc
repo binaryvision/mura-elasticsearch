@@ -14,7 +14,7 @@ component accessors=true {
     }
 
     function initBeanfactory() {
-        beanFactory = new vendor.ioc("/MuraElasticsearch/model", { singletonPattern = "(Service|Factory)$" });
+        beanFactory = new vendor.ioc("/MuraElasticsearch/model", { singletonPattern = "(Service|Factory|Manager)$" });
         
         if (isDefined("variables.parentBeanFactory"))
             beanFactory.setParent(getParentBeanFactory());
@@ -31,17 +31,17 @@ component accessors=true {
     }
 
     function updateContent(required content) {
-        return getMuraIndex(newContent.getSiteID()).update(content);
+        //return getMuraIndex(content.getSiteID()).update(content);
     }
 
     function removeContent(required content) {
-        return getMuraIndex(content.getSiteID()).remove(content);
+        //return getMuraIndex(content.getSiteID()).remove(content);
     }
 
     /** PRIVATE *************************************************************/
 
     private function getMuraIndex(required siteid) {
-        return getBean("MuraIndex").init(siteid); // maybe cache these?
+        return getBean("MuraIndex").setSiteID(siteid); // maybe cache these?
     }
 
 }
