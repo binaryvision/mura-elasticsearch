@@ -28,8 +28,6 @@ component accessors=true {
                     .setSortDirection("asc")
                     .setMaxItems(99999)
                     .setNextN(val(getConfig("ELASTICSEARCH_BATCH_LIMIT", 1000)))
-                    .setLiveOnly(false)
-                    .setActiveOnly(false)
                     .setShowExcludedSearch(true)
                     .setShowNavOnly(false)
                     .getIterator()
@@ -69,7 +67,8 @@ component accessors=true {
         if (not shouldIndex(content)) return remove(content);
 
         var contentJSON = contentToJSON(content);
-        var filenameHasChanged = content.getOldFilename() neq content.getFilename();
+        var oldFilename = getMuraService().getFilenameOfLastVersion(content);
+        var filenameHasChanged = len(oldFilename) and content.getFilename() neq oldFilename;
 
         for (var index in getWriteAlias()) {
             getElasticsearchClient().insertDocument(
@@ -79,7 +78,13 @@ component accessors=true {
                 body=contentJSON
             );
 
-            if (filenameHasChanged) updateContentUsingOldFilename(index, content);
+            if (filenameHasChanged) {
+                updateFilenames(
+                    index=index, 
+                    oldFilename=oldFilename,
+                    newFilename=content.getFilename()
+                ); 
+            }
         }
     }
 
@@ -118,11 +123,50 @@ component accessors=true {
         return elasticsearchClient;
     }
 
+    function updateFilenames(required index, required oldFilename, required newFilename) {
+        var elasticsearch = getElasticsearchClient();
+
+        var scroll_id = elasticsearch.search(
+            index=index,
+            type=getMuraContentType(),
+            body={
+                "query"={
+                    "match"={ // note that this requries a custom analyzer using path_hierarchy_tokenizer to work! see indexSettings.json
+                        "filename"=oldFilename
+                    }
+                },
+                "size"=500
+            },
+            params={
+                "search_type"="scan",
+                "scroll"="5m"
+            }
+        ).toJSON()["_scroll_id"];
+
+        var results = elasticsearch.searchScroll("5m", scroll_id).toJSON();
+
+        while (arrayLen(results["hits"]["hits"])) {
+            var bulk_actions = [];
+
+            for (var i=1; i lt arrayLen(results["hits"]["hits"]); i++) {
+                var record = results["hits"]["hits"][i];
+
+                arrayAppend(bulk_actions, { "update"={ "_id"= record["_source"]["contentID"] } });
+                arrayAppend(bulk_actions, { "doc"={
+                    "filename"=replace(record["_source"]["filename"], oldFilename, newFilename),
+                    "url"=replace(record["_source"]["url"], oldFilename, newFilename)
+                }});
+            }
+
+            var results = elasticsearch.searchScroll("5m", scroll_id).toJSON();
+        }
+    }
+
     /** PRIVATE *************************************************************/
 
     private function createNewIndex() {
         var newIndexName = getAliasName() & "_" & lcase(createUUID());
-        getElasticsearchClient().createIndex(newIndexName); // TODO read settings index_settings.json
+        getElasticsearchClient().createIndex(newIndexName, getContentIndexer().getIndexSettings()); // TODO read settings index_settings.json
         getElasticsearchClient().createAlias(getWriteAliasName(), newIndexName);
         return newIndexName;
     }
@@ -150,51 +194,6 @@ component accessors=true {
             key=key,
             defaultValue=defaultValue
         );
-    }
-
-    private function updateContentUsingOldFilename(required index, required content) {
-        var elasticsearch = getElasticsearchClient();
-
-        var scroll_id = elasticsearch.search(
-            index=index,
-            type=getMuraContentType(),
-            body={
-                "query"={
-                    "prefix"={
-                        "filename"=content.getOldFilename()
-                    }
-                },
-                "size"=500
-            },
-            params={
-                "search_type"="scan",
-                "scroll"="1m"
-            }
-        ).toJSON()["_scroll_id"];
-
-        var results = elasticsearch.searchScroll("1m", scroll_id);
-
-        while (arrayLen(results["hits"]["hits"])) {
-            var bulk_actions = [];
-
-            for (var i=1; i lt arrayLen(results["hits"]["hits"]); i++) {
-                var record = results["hits"]["hits"][i];
-
-                arrayAppend(bulk_actions, { "update"={ "_id"= record["contentID"] } });
-                arrayAppend(bulk_actions, {
-                    "filename"=replace(record["filename"], content.getOldFilename(), content.getFilename()),
-                    "url"=replace(record["url"], content.getOldFilename(), content.getFilename())
-                });
-            }
-
-            elasticsearch.bulk(
-                index=index,
-                type=getMuraContentType(),
-                actions=bulk_actions
-            );
-
-            var results = elasticsearch.searchScroll("1m", scroll_id);
-        }
     }
 
     private function getWriteAlias() {

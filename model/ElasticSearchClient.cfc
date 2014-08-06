@@ -233,7 +233,7 @@ component accessors=true {
     private function structToQueryString(required structure) {
         var queryString = "";
         for (var key in structure) {
-            listAppend(queryString, URLEncodedFormat(lcase(key)) & "=" & URLEncodedFormat(structure[key]), "&");
+            queryString = listAppend(queryString, URLEncodedFormat(lcase(key)) & "=" & URLEncodedFormat(structure[key]), "&");
         }
         return "?" & queryString;
     }

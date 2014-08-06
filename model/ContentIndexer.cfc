@@ -1,4 +1,5 @@
-component {
+component accessors=true {
+    property name="beanFactory";
 
     function getIndexSettings() {
         return fileRead("indexSettings.json"); // if extended in a theme where will this look?
@@ -15,6 +16,7 @@ component {
 
     function contentToStruct(required content) {
         return {
+            "contentID"=content.getContentID(),
             "title"=content.getTitle(),
             "path"=content.getPath(),
             "type"=content.getType(),
@@ -22,7 +24,7 @@ component {
             "body"=content.getBody(),
             "summary"=content.getSummary(),
             "file"=(
-                len(content.getFileID())
+                (len(content.getFileID()) and content.getType().equalsIgnoreCase("file"))
                     ? binaryEncode(fileReadBinary(getPathToAssociatedFile(content)), "base64")
                     : ""
             ),
@@ -31,8 +33,13 @@ component {
             "created"=content.getCreated(),
             "lastUpdate"=content.getLastUpdate(),
             "metaDesc"=content.getMetaDesc(),
-            "metaKeywords"=content.getMetaKeywords()
+            "metaKeywords"=content.getMetaKeywords(),
+            "filename"=content.getFilename()
         };
+    }
+
+    private function getPathToAssociatedFile(required content) {
+        getBeanFactory().getMuraService().getPathToAssociatedFile(content);
     }
 
 }

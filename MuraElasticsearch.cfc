@@ -31,11 +31,11 @@ component accessors=true {
     }
 
     function updateContent(required content) {
-        //return getMuraIndex(content.getSiteID()).update(content);
+        return getMuraIndex(content.getSiteID()).update(content);
     }
 
     function removeContent(required content) {
-        //return getMuraIndex(content.getSiteID()).remove(content);
+        return getMuraIndex(content.getSiteID()).remove(content);
     }
 
     /** PRIVATE *************************************************************/
