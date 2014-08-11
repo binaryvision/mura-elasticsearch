@@ -1,21 +1,24 @@
 component accessors=true {
-    elasticsearchDateFormat = "yyyyMMdd";
-    elasticsearchDatetimeFormat = "yyyyMMdd'T'HHmmss.SSSZ";
+    this.DATE_FORMAT = "yyyy-MM-dd";
+    this.DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
 
-    function formatDate(required date) {
-        return getDateFormatter().format(date);
+    dateFormatter = createObject("java", "java.text.SimpleDateFormat").init(this.DATE_FORMAT);
+    datetimeFormatter = createObject("java", "java.text.SimpleDateFormat").init(this.DATETIME_FORMAT);
+
+    function parseDate(required datetimeString) {
+        return dateFormatter.parse(datetimeString);
+    }
+
+    function parseDatetime(required datetimeString) {
+        return datetimeFormatter.parse(datetimeString);
+    }
+
+    function formatDate(required datetime) {
+        return dateFormatter.format(datetime);
     }
 
     function formatDatetime(required datetime) {
-        return getDatetimeFormatter().format(datetime);
-    }
-
-    function getDateFormatter() {
-        return createObject("java", "java.text.SimpleDateFormat").init(elasticsearchDateFormat);
-    }
-
-    function getDatetimeFormatter() {
-        return createObject("java", "java.text.SimpleDateFormat").init(elasticsearchDatetimeFormat);
+        return datetimeFormatter.format(datetime);
     }
 
 }

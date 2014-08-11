@@ -43,12 +43,16 @@ component accessors=true {
         getBeanFactory().getMuraService().getPathToAssociatedFile(content);
     }
 
-    private function elasticsearchDate(required datetime) {
-        return dateFormat(datetime, "YYYYMMDD");
+    private function getElasticsearchService() {
+        return getBeanFactory().getBean("elasticsearchService");
+    }
+
+    private function elasticsearchDate(required date) {
+        return getElasticsearchService().formatDate(date);
     }
 
     private function elasticsearchDatetime(required datetime) {
-        return elasticsearchDate(datetime) & "T" & timeFormat(datetime, "HHMMSS");
+        return getElasticsearchService().formatDatetime(datetime);
     } 
 
 }
