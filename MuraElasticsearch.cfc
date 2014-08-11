@@ -27,21 +27,15 @@ component accessors=true {
     /** ACTIONS *************************************************************/
 
     function refreshSiteIndex(required siteid) {
-        return getMuraIndex(siteid).refresh();
+        return getBean("MuraService").refreshElasticsearch(siteid);
     }
 
     function updateContent(required content) {
-        return getMuraIndex(content.getSiteID()).update(content);
+        return getBean("MuraService").updateElasticsearch(content);
     }
 
     function removeContent(required content) {
-        return getMuraIndex(content.getSiteID()).remove(content);
-    }
-
-    /** PRIVATE *************************************************************/
-
-    private function getMuraIndex(required siteid) {
-        return getBean("MuraIndex").setSiteID(siteid); // maybe cache these?
+        return getBean("MuraService").removeFromElasticsearch(content);
     }
 
 }

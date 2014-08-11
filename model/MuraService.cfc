@@ -2,6 +2,23 @@ component accessors=true {
     property name="configBean";
     property name="pluginManager";
     property name="settingsManager";
+    property name="beanFactory";
+
+    function refreshElasticsearch(required siteid) {
+        return getElasticsearchIndex(siteid).refresh();
+    }
+
+    function removeFromElasticsearch(required content) {
+        return getElasticsearchIndex(content.getSiteID()).remove(content);
+    }
+
+    function updateElasticsearch(required content) {
+        return getElasticsearchIndex(content.getSiteID()).update(content);
+    }
+
+    function getElasticsearchIndex(required siteid) {
+        return getBeanFactory().getBean("MuraIndex").setSiteID(siteid);
+    }
 
     function getSite(required siteid) {
         return getSettingsManager().getSite(siteid);

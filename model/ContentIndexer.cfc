@@ -11,6 +11,7 @@ component accessors=true {
     }
 
     function contentToJSON(required content) {
+        writeDump(serializeJSON(contentToStruct(content)));
         return serializeJSON(contentToStruct(content));
     }
 
@@ -30,8 +31,8 @@ component accessors=true {
             ),
             "tags"=listToArray(content.getTags()),
             "url"=content.getUrl(),
-            "created"=content.getCreated(),
-            "lastUpdate"=content.getLastUpdate(),
+            "created"=elasticsearchDatetime(content.getCreated()),
+            "lastUpdate"=elasticsearchDatetime(content.getLastUpdate()),
             "metaDesc"=content.getMetaDesc(),
             "metaKeywords"=content.getMetaKeywords(),
             "filename"=content.getFilename()
@@ -41,5 +42,13 @@ component accessors=true {
     private function getPathToAssociatedFile(required content) {
         getBeanFactory().getMuraService().getPathToAssociatedFile(content);
     }
+
+    private function elasticsearchDate(required datetime) {
+        return dateFormat(datetime, "YYYYMMDD");
+    }
+
+    private function elasticsearchDatetime(required datetime) {
+        return elasticsearchDate(datetime) & "T" & timeFormat(datetime, "HHMMSS");
+    } 
 
 }

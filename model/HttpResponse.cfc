@@ -15,8 +15,20 @@ component accessors=true {
         return responseJSON;
     }
 
+    function toString() {
+        return getResponse().fileContent;
+    }
+
     function getStatusCode() {
         return val(getResponse().statusCode);
+    }
+
+    function is404() {
+        return getStatusCode() eq 404;
+    }
+
+    function is200() {
+        return getStatusCode() eq 200;
     }
 
 }

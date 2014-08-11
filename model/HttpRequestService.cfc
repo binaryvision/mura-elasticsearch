@@ -7,11 +7,13 @@ component accessors=true {
         any body,
         array auth,
         struct params={},
-        struct headers={}
+        struct headers={},
+        boolean throwOnError=false
     ) {
         var http = new http(
             url = arguments.url,
-            method = arguments.method
+            method = arguments.method,
+            throwOnError = arguments.throwOnError
         );
 
         if (isDefined("arguments.auth")) {

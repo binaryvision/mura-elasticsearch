@@ -36,15 +36,19 @@ component accessors=true {
             for (var i=1; i lte batch.pageCount(); i++) {
                 batch.setPage(i);
 
-                var bulk_actions = [];
+                var batch_actions = [];
 
                 while (batch.hasNext()) {
                     var content = batch.next();
-                    arrayAppend(bulk_actions, { "index" = { "_id" = content.getContentID() } });
-                    arrayAppend(bulk_actions, contentToJSON(content));
+                    arrayAppend(batch_actions, { "index" = { "_id" = content.getContentID() } });
+                    arrayAppend(batch_actions, contentToJSON(content));
                 }
 
-                getElasticsearchClient().bulk(bulk_actions, new_index, getMuraContentType());
+                writeDump(getElasticsearchClient().bulk(
+                    actions=batch_actions,
+                    index=new_index,
+                    type=getMuraContentType()
+                ).toJSON());
             }
 
             completed = true;
@@ -52,7 +56,7 @@ component accessors=true {
             changeAlias(new_index);
         } finally {
             if (isDefined("new_index") and not completed) {
-                getElasticsearchClient().deleteIndex(new_index);
+                getElasticsearchClient().deleteIndex(name=new_index);
             }
 
             /*
@@ -107,10 +111,12 @@ component accessors=true {
     }
 
     function getAlias() {
-        var response = getElasticsearchClient().getAlias(getAliasName());
-        return response.getStatusCode() eq 200
-            ? structKeyArray(response.toJSON())
-            : [];
+        var response = getElasticsearchClient().getAlias(name=getAliasName(), throwOnError=false);
+        return (
+            response.is200()
+                ? structKeyArray(response.toJSON())
+                : []
+        );
     }
 
     function getAliasName() {
@@ -143,7 +149,7 @@ component accessors=true {
             }
         ).toJSON()["_scroll_id"];
 
-        var results = elasticsearch.searchScroll("5m", scroll_id).toJSON();
+        var results = elasticsearch.searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
 
         while (arrayLen(results["hits"]["hits"])) {
             var bulk_actions = [];
@@ -158,7 +164,7 @@ component accessors=true {
                 }});
             }
 
-            var results = elasticsearch.searchScroll("5m", scroll_id).toJSON();
+            var results = elasticsearch.searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
         }
     }
 
@@ -166,8 +172,8 @@ component accessors=true {
 
     private function createNewIndex() {
         var newIndexName = getAliasName() & "_" & lcase(createUUID());
-        getElasticsearchClient().createIndex(newIndexName, getContentIndexer().getIndexSettings()); // TODO read settings index_settings.json
-        getElasticsearchClient().createAlias(getWriteAliasName(), newIndexName);
+        getElasticsearchClient().createIndex(name=newIndexName, body=getContentIndexer().getIndexSettings()); // TODO read settings index_settings.json
+        getElasticsearchClient().createAlias(name=getWriteAliasName(), index=newIndexName);
         return newIndexName;
     }
 
@@ -185,7 +191,7 @@ component accessors=true {
         arrayAppend(actions, { "add" = { "index"=newIndex, "alias"=getWriteAliasName() } });
         arrayAppend(actions, { "add" = { "index"=newIndex, "alias"=getAliasName() } });
 
-        return getElasticsearchClient().updateAliases(actions);
+        return getElasticsearchClient().updateAliases(actions=actions);
     }
 
     private function getConfig(required key, defaultValue='') {
@@ -197,10 +203,12 @@ component accessors=true {
     }
 
     private function getWriteAlias() {
-        var response = getElasticsearchClient().getAlias(getWriteAliasName());
-        return response.getStatusCode() eq 200
-            ? structKeyArray(response.toJSON())
-            : [];
+        var response = getElasticsearchClient().getAlias(name=getWriteAliasName(), throwOnError=false);
+        return (
+            response.is200()
+                ? structKeyArray(response.toJSON())
+                : []
+        );
     }
 
     private function getWriteAliasName() {
