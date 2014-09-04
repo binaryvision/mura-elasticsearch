@@ -1,21 +1,23 @@
 component accessors=true {
+    property name="beanFactory";
     property name="muraService";
     property name="elasticsearchService";
 
     /** OPERATIONS **********************************************************/
 
     function refresh(required siteid)
+        /* TODO add some locking and better error handling and status reporting (be good to have some trace stuff in for debugging) */
         hint="Refresh a mura sites elasticsearch index, updating the settings, and reloading the content from the database."
     {
         var completed = false;
         var elasticsearch = getElasticsearchClient(siteid);
 
         try {
-            var newIndex = createNewIndex(siteid);
+            var newIndexName = createNewIndex(siteid);
 
             var siteContent = (
                 getBeanFactory().getBean("feed")
-                    .setSiteID(getSiteID())
+                    .setSiteID(siteid)
                     .setSortBy("lastUpdate")
                     .setSortDirection("asc")
                     .setMaxItems(99999)
@@ -46,17 +48,17 @@ component accessors=true {
 
                 elasticsearch.bulk(
                     actions=actions,
-                    index=newIndex,
-                    type=getMuraContentType()
+                    index=newIndexName,
+                    type=getMuraContentType(siteid)
                 );
             }
 
             completed = true;
 
-            changeSiteIndex(newIndex);
+            changeSiteIndex(siteid, newIndexName);
         } finally {
-            if (isDefined("newIndex") and not completed) {
-                elasticsearch.deleteIndex(name=newIndex);
+            if (isDefined("newIndexName") and not completed) {
+                elasticsearch.deleteIndex(name=newIndexName);
             }
         }
     }
@@ -69,17 +71,17 @@ component accessors=true {
         var filenameHasChanged = len(oldFilename) and content.getFilename() neq oldFilename;
         var elasticsearch = getElasticsearchClient(content.getSiteID());
 
-        for (var index in getWriteAlias(siteid)) {
+        for (var index in getWriteAlias(content.getSiteID())) {
             elasticsearch.insertDocument(
                 index=index,
-                type=getMuraContentType(),
+                type=getMuraContentType(content.getSiteID()),
                 id=content.getContentID(),
                 body=contentJSON
             );
 
             if (filenameHasChanged) {
                 fixFilenames(
-                    elasticsearchClient=elasticsearch,
+                    siteid=content.getSiteID(),
                     index=index,
                     oldFilename=oldFilename,
                     newFilename=content.getFilename()
@@ -89,10 +91,10 @@ component accessors=true {
     }
 
     function remove(required content) {
-        for (var index in getWriteAlias()) {
+        for (var index in getWriteAlias(content.getSiteID())) {
             getElasticsearchClient().removeDocument(
                 index=getAliasName(),
-                type=getMuraContentType(),
+                type=getMuraContentType(content.getSiteID()),
                 id=content.getContentID()
             );
         }
@@ -125,7 +127,7 @@ component accessors=true {
         return getMuraService().getSiteConfig(
             siteid=siteid,
             key="ELASTICSEARCH_ALIAS",
-            defaultValue=siteid
+            defaultValue=lcase(siteid)
         );
     }
 
@@ -142,8 +144,12 @@ component accessors=true {
         return getAliasName(siteid) & getWriteAliasSuffix();
     }
 
-    function getMuraContentType() {
-        return getConfig("ELASTICSEARCH_MURA_CONTENT_TYPE", "muraContent");
+    function getMuraContentType(required siteid) {
+        return getMuraService().getSiteConfig(
+            siteid=siteid,
+            key="ELASTICSEARCH_MURA_CONTENT_TYPE",
+            defaultValue="muraContent"
+        );
     }
 
     /** PRIVATE *************************************************************/
@@ -205,14 +211,14 @@ component accessors=true {
     }
 
     function fixFilenames(
-        required elasticsearchClient,
+        required siteid,
         required index,
         required oldFilename,
         required newFilename
     ) {
-        elasticsearchClient.searchAndReplace(
+        getElasticsearchClient(siteid).searchAndReplace(
             index=index, 
-            type=getMuraContentType(),
+            type=getMuraContentType(siteid),
             body={
                 "query"={
                     "match"={ // note that this requries a custom analyzer using path_hierarchy_tokenizer to work! see indexSettings.json

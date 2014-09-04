@@ -2,17 +2,11 @@ component accessors=true {
     property name="response";
 
     function isJSON() {
-        if(not isDefined("responseIsJSON"))
-            responseIsJSON = isJSON(getResponse().fileContent);
-
-        return responseIsJSON;
+        return isJSON(getResponse().fileContent);
     }
 
     function toJSON() {
-        if (not isDefined("responseJSON") and this.isJSON())
-            responseJSON = deserializeJSON(getResponse().fileContent);
-
-        return responseJSON;
+        return deserializeJSON(getResponse().fileContent);
     }
 
     function toString() {
