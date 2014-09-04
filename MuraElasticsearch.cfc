@@ -24,18 +24,18 @@ component accessors=true {
         return getBeanFactory().getBean(name);
     }
 
-    /** ACTIONS *************************************************************/
+    /** ACTIONS / ENTRYPOINTS ***********************************************/
 
     function refreshSiteIndex(required siteid) {
-        return getBean("MuraService").refreshElasticsearch(siteid);
+        return getBean("MuraElasticsearchService").refresh(siteid);
     }
 
     function updateContent(required content) {
-        return getBean("MuraService").updateElasticsearch(content);
+        return getBean("MuraElasticsearchService").update(content);
     }
 
     function removeContent(required content) {
-        return getBean("MuraService").removeFromElasticsearch(content);
+        return getBean("MuraElasticsearchService").remove(content);
     }
 
 }

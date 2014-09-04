@@ -11,7 +11,6 @@ component accessors=true {
     }
 
     function contentToJSON(required content) {
-        writeDump(serializeJSON(contentToStruct(content)));
         return serializeJSON(contentToStruct(content));
     }
 

@@ -248,6 +248,54 @@ component accessors=true {
             throwOnError=throwOnError
         );
     }
+
+    function searchAndReplace(
+        required index,
+        required type,
+        required body,
+        required fields,
+        required oldValue,
+        required newValue
+    ) {
+        var scroll_id = search(
+            index=index,
+            type=type,
+            body=body,
+            params={
+                "search_type"="scan",
+                "scroll"="5m"
+            }
+        ).toJSON()["_scroll_id"];
+
+        var results = searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
+
+        while (arrayLen(results["hits"]["hits"])) {
+            var actions = [];
+
+            for (var i=1; i lt arrayLen(results["hits"]["hits"]); i++) {
+                var record = results["hits"]["hits"][i];
+
+                var updatedDoc = {};
+
+                for (var field in listToArray(fields)) {
+                    if (structKeyExists(record["_source"], field)) {
+                        updatedDoc[field] = replace(record["_source"][field], oldValue, newValue);
+                    }
+                }
+
+                arrayAppend(actions, { "update"={ "_id"= record["_source"]["contentID"] } });
+                arrayAppend(actions, { "doc"=updatedDoc });
+            }
+
+            elasticsearch.bulk(
+                actions=actions,
+                index=index,
+                type=getMuraContentType()
+            );
+
+            var results = elasticsearch.searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
+        }
+    }
  
     /*** PRIVATE METHODS ****************************************************/
 

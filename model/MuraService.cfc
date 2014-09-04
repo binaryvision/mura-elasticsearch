@@ -4,22 +4,6 @@ component accessors=true {
     property name="settingsManager";
     property name="beanFactory";
 
-    function refreshElasticsearch(required siteid) {
-        return getElasticsearchIndex(siteid).refresh();
-    }
-
-    function removeFromElasticsearch(required content) {
-        return getElasticsearchIndex(content.getSiteID()).remove(content);
-    }
-
-    function updateElasticsearch(required content) {
-        return getElasticsearchIndex(content.getSiteID()).update(content);
-    }
-
-    function getElasticsearchIndex(required siteid) {
-        return getBeanFactory().getBean("MuraIndex").setSiteID(siteid);
-    }
-
     function getSite(required siteid) {
         return getSettingsManager().getSite(siteid);
     }
@@ -54,7 +38,7 @@ component accessors=true {
     function getFilenameOfLastVersion(required content) {
         var dbtype = lcase(getConfigBean().getDBType());
 
-        // wish there was an easy way to do limit 1 offset 1 across mssql versions
+        // wish there was an easy way to do limit 1 offset 1 across sql versions
         var q = new query(datasource=getConfigBean().getDatasource(), sql="
             select #dbtype eq "mssql" ? "top 2" : ""#
                 tcontent.filename
