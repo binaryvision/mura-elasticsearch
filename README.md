@@ -27,8 +27,6 @@ See existing tests for examples of how to structure your own.
 
 Find out what we're working on at https://trello.com/b/duJkz7Xs/mura-elasticsearch
 
-(Ask [@oscarduignan](https://github.com/oscarduignan) if you want access)
-
 ## Changelog
 
 Find our release notes at https://github.com/binaryvision/mura-elasticsearch/releases
