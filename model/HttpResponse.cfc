@@ -6,7 +6,7 @@ component accessors=true {
     }
 
     function toJSON() {
-        return deserializeJSON(getResponse().fileContent);
+        return this.isJSON() ? deserializeJSON(getResponse().fileContent) : getResponse().fileContent;
     }
 
     function toString() {
@@ -15,6 +15,10 @@ component accessors=true {
 
     function getStatusCode() {
         return val(getResponse().statusCode);
+    }
+
+    function getStatusCodeString() {
+        return getResponse().statusCode;
     }
 
     function is404() {

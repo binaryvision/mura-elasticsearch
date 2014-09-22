@@ -1,14 +1,22 @@
 component accessors=true {
     property name="Host";
     property name="HttpRequestService";
-    property name="ElasticsearchService";
+
+    function init(
+        host,
+        httpRequestService
+    ) {
+        setHost(arguments.host);
+        setHttpRequestService(arguments.httpRequestService);
+        return this;
+    }
 
     function search(
         required body,
         index="",
         type="",
         params="",
-        throwOnError=true        
+        ignore=""        
     ) {
         if (not len(index) and len(type)) index = "*";
 
@@ -18,19 +26,19 @@ component accessors=true {
             method="post",
             url=createUrl(index, type, "_search") & params,
             body=body,
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function searchScroll(
         required scroll,
         required scrollID,
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="get",
             url=createURL("_search", "scroll") & structToQueryString({scroll=scroll, scroll_id=scrollID}),
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -39,46 +47,45 @@ component accessors=true {
     function createIndex(
         required name,
         body="",
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="put",
             url=createUrl(name),
             body=body,
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function deleteIndex(
         required name,
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="delete",
             url=createUrl(name),
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function indexExists(
-        required name,
-        throwOnError=true        
+        required name
     ) {
         return makeHttpRequest(
             method="head",
             url=createUrl(name),
-            throwOnError=throwOnError
+            ignore="404"
         ).is200();
     }
 
     function refreshIndex(
         name="",
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="post",
             url=createUrl(name, "_refresh"),
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -87,7 +94,7 @@ component accessors=true {
     function createAlias(
         required name,
         required index,
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="post",
@@ -97,14 +104,14 @@ component accessors=true {
                     {"add"= {"index"=index, "alias"=name}}
                 ]
             },
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function removeAlias(
         required name,
         index="_all",
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="post",
@@ -114,7 +121,7 @@ component accessors=true {
                     {"remove"= {"index"=index, "alias"=name}}
                 ]
             },
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -122,20 +129,20 @@ component accessors=true {
         required name,
         required index,
         previousIndex="_all",
-        throwOnError=true        
+        ignore=""        
     ) {
         return updateAliases(
             [
                 {"remove" = {"index"=previousIndex, "alias"=name}},
                 {"add" = {"index"=index, "alias"=name}}
             ],
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function updateAliases(
         required actions,
-        throwOnError=true        
+        ignore=""        
     ) {
         return makeHttpRequest(
             method="post",
@@ -143,31 +150,30 @@ component accessors=true {
             body={
                 "actions"=actions
             },
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function getAlias(
         index="",
         alias="",
-        throwOnError=true
+        ignore=""
     ) {
         return makeHttpRequest(
             method="get",
             url=createUrl(index, "_alias", alias),
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function aliasExists(
         required name,
-        index="",
-        throwOnError=true
+        index=""
     ) {
         return makeHttpRequest(
             method="head",
             url=createUrl(index, "_alias", name),
-            throwOnError=throwOnError
+            ignore="404"
         ).is200();
     }
 
@@ -178,13 +184,13 @@ component accessors=true {
         required type,
         required id,
         required body,
-        throwOnError=true
+        ignore=""
     ) {
         return makeHttpRequest(
             method="put",
             url=createUrl(index, type, id),
             body=body,
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -193,26 +199,25 @@ component accessors=true {
         required type,
         required id,
         required body,
-        throwOnError=true
+        ignore=""
     ) {
         return makeHttpRequest(
             method="post",
             url=createUrl(index, type, id, "_update"),
             body=body,
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
     function documentExists(
         required index,
         required type,
-        required id,
-        throwOnError=true
+        required id
     ) {
         return makeHttpRequest(
             method="head",
             url=createUrl(index, type, id),
-            throwOnError=throwOnError
+            ignore="404"
         ).is200();
     }
 
@@ -220,12 +225,12 @@ component accessors=true {
         required index,
         required type,
         required id,
-        throwOnError=true
+        ignore=""
     ) {
         return makeHttpRequest(
             method="delete",
             url=createUrl(index, type, id),
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -235,7 +240,7 @@ component accessors=true {
         required actions,
         index="",
         type="",
-        throwOnError=true
+        ignore=""
     ) {
         for (var i=1; i lte arrayLen(actions); i++) {
             if (not isJSON(actions[i])) actions[i] = serializeJSON(actions[i]);
@@ -245,7 +250,7 @@ component accessors=true {
             method="post",
             url=createUrl(index, type, "_bulk"),
             body=arrayToList(actions, "#chr(10)#") & "#chr(10)#",
-            throwOnError=throwOnError
+            ignore=ignore
         );
     }
 
@@ -255,7 +260,8 @@ component accessors=true {
         required body,
         required fields,
         required oldValue,
-        required newValue
+        required newValue,
+        ignore=""
     ) {
         var scroll_id = search(
             index=index,
@@ -290,7 +296,8 @@ component accessors=true {
             elasticsearch.bulk(
                 actions=actions,
                 index=index,
-                type=getMuraContentType()
+                type=getMuraContentType(),
+                ignore=ignore
             );
 
             var results = elasticsearch.searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
@@ -298,10 +305,6 @@ component accessors=true {
     }
  
     /*** PRIVATE METHODS ****************************************************/
-
-    private function getHost() {
-        return variables.host;
-    }
 
     private function createUrl() {
         var href = getHost();
@@ -314,22 +317,48 @@ component accessors=true {
     }
 
     private function makeHttpRequest() {
-        var throwOnError = arguments.throwOnError;
+        response = getHttpRequestService().request(argumentCollection=arguments, throwOnError=false); 
 
-        arguments.throwOnError = false;
+        // TODO log request was made
 
-        var response = getHttpRequestService().request(argumentCollection=arguments);
-
-        if (throwOnError and not response.is200()) {
-            throw(
-                type="Elasticsearch",
-                message=structKeyExists(response.toJSON(), "error") ? response.toJSON().error : "Elasticsearch error",
-                detail=response.toString(),
-                errorCode=response.toJSON().status
-            );
+        if (
+            not (response.getStatusCode() >= 200 and response.getStatusCode() < 300)
+            and not listFindNoCase(response.getStatusCode(), arguments.ignore)
+        ) {
+            // TODO log that request failed
+            raiseError(response);
         }
 
         return response;
+    }
+
+    HTTP_ERRORS = {
+        0   = "elasticsearch.TransportError.ConnectionError",
+        400 = "elasticsearch.TransportError.RequestError",
+        404 = "elasticsearch.TransportError.NotFoundError",
+        409 = "elasticsearch.TransportError.ConflictError"
+    };
+
+    private function raiseError(required response) {
+        var responseJSON = response.toJSON();
+
+        var errorType = (
+            structkeyexists(HTTP_ERRORS, response.getStatusCode())
+                ? HTTP_ERRORS[response.getStatusCode()]
+                : "elasticsearch.TransportError")
+
+        var errorDetail = (
+            isstruct(responseJSON) and structkeyexists(responseJSON, "error")
+                ? responseJSON.error
+                : "");
+
+        throw(
+            type=errorType,
+            message=errorType,
+            detail=errorDetail,
+            extendedInfo=response.toString(),
+            code=response.getStatusCodeString()
+        );
     }
 
     private function structToQueryString(required structure) {
