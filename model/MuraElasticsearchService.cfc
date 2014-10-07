@@ -5,7 +5,7 @@ component accessors=true {
 
     /** OPERATIONS **********************************************************/
 
-    function refresh(required siteid)
+    function reindex(required siteid)
         /* TODO add some locking and better error handling and status reporting (be good to have some trace stuff in for debugging) */
         hint="Refresh a mura sites elasticsearch index, updating the settings, and reloading the content from the database."
     {
@@ -227,8 +227,8 @@ component accessors=true {
                 }
             },
             fields="url,filename",
-            oldValue=oldFilename,
-            newValue=newFilename
+            regex="^" & oldFilename,
+            substring=newFilename
         );
     }
 
