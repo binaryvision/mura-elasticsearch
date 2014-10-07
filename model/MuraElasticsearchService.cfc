@@ -14,40 +14,23 @@ component accessors=true {
 
         try {
             var newIndexName = createNewIndex(siteid);
+            var siteContentIterator = getSiteContentIterator(siteid);
 
-            var siteContent = (
-                getBeanFactory().getBean("feed")
-                    .setSiteID(siteid)
-                    .setSortBy("lastUpdate")
-                    .setSortDirection("asc")
-                    .setMaxItems(99999)
-                    .setNextN(val(
-                        getMuraService().getSiteConfig(
-                            siteid=siteid,
-                            key="ELASTICSEARCH_BATCH_LIMIT",
-                            defaultValue=250
-                        )
-                    ))
-                    .setShowExcludedSearch(true)
-                    .setShowNavOnly(false)
-                    .getIterator()
-            );
+            for (var i=1; i lte siteContentIterator.pageCount(); i++) {
+                siteContentIterator.setPage(i);
 
-            for (var i=1; i lte siteContent.pageCount(); i++) {
-                siteContent.setPage(i);
+                var batchActions = [];
 
-                var actions = [];
-
-                while (siteContent.hasNext()) {
-                    var content = siteContent.next();
+                while (siteContentIterator.hasNext()) {
+                    var content = siteContentIterator.next();
                     if (shouldIndex(content)) {
-                        arrayAppend(actions, { "index" = { "_id" = content.getContentID() } });
-                        arrayAppend(actions, contentToJSON(content));
+                        arrayAppend(batchActions, { "index" = { "_id" = content.getContentID() } });
+                        arrayAppend(batchActions, contentToJSON(content));
                     }
                 }
 
                 elasticsearch.bulk(
-                    actions=actions,
+                    actions=batchActions,
                     index=newIndexName,
                     type=getMuraContentType(siteid)
                 );
@@ -230,6 +213,24 @@ component accessors=true {
             regex="^" & oldFilename,
             substring=newFilename
         );
+    }
+
+    private function getContentIteratorForSite(required siteid) {
+        return getBeanFactory().getBean("feed")
+            .setSiteID(siteid)
+            .setSortBy("lastUpdate")
+            .setSortDirection("asc")
+            .setMaxItems(99999)
+            .setNextN(val(
+                getMuraService().getSiteConfig(
+                    siteid=siteid,
+                    key="ELASTICSEARCH_BATCH_LIMIT",
+                    defaultValue=250
+                )
+            ))
+            .setShowExcludedSearch(true)
+            .setShowNavOnly(false)
+            .getIterator();
     }
 
 }
