@@ -26,8 +26,8 @@ component accessors=true {
 
     /** ACTIONS / ENTRYPOINTS ***********************************************/
 
-    function refreshSiteIndex(required siteid) {
-        return getBean("MuraElasticsearchService").refresh(siteid);
+    function reindexSite(required siteid) {
+        return getBean("MuraElasticsearchService").reindex(siteid);
     }
 
     function updateContent(required content) {
