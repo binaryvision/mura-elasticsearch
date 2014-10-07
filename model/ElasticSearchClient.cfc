@@ -194,6 +194,19 @@ component accessors=true {
         );
     }
 
+    function getDocument(
+        required index,
+        required type,
+        required id,
+        ignore=""
+    ) {
+        return makeHttpRequest(
+            method="get",
+            url=createUrl(index, type, id),
+            ignore=ignore
+        );
+    }
+
     function updateDocument(
         required index,
         required type,
@@ -259,8 +272,9 @@ component accessors=true {
         required type,
         required body,
         required fields,
-        required oldValue,
-        required newValue,
+        required regex,
+        required substring,
+        scope="all",
         ignore=""
     ) {
         var scroll_id = search(
@@ -273,34 +287,32 @@ component accessors=true {
             }
         ).toJSON()["_scroll_id"];
 
-        var results = searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
+        var results = searchScroll(scroll="5m", scrollId=scroll_id).toJSON();
 
         while (arrayLen(results["hits"]["hits"])) {
             var actions = [];
 
-            for (var i=1; i lt arrayLen(results["hits"]["hits"]); i++) {
+            for (var i=1; i lte arrayLen(results["hits"]["hits"]); i++) {
                 var record = results["hits"]["hits"][i];
 
                 var updatedDoc = {};
 
                 for (var field in listToArray(fields)) {
                     if (structKeyExists(record["_source"], field)) {
-                        updatedDoc[field] = replace(record["_source"][field], oldValue, newValue);
+                        updatedDoc[field] = reReplace(record["_source"][field], regex, substring, scope);
                     }
                 }
 
-                arrayAppend(actions, { "update"={ "_id"= record["_source"]["contentID"] } });
+                arrayAppend(actions, { "update"={ "_id"=record["_id"], "_type"=record["_type"], "_index"=record["_index"] } });
                 arrayAppend(actions, { "doc"=updatedDoc });
             }
 
-            elasticsearch.bulk(
+            bulk(
                 actions=actions,
-                index=index,
-                type=getMuraContentType(),
                 ignore=ignore
             );
 
-            var results = elasticsearch.searchScroll(scroll="5m", scroll_id=scroll_id).toJSON();
+            var results = searchScroll(scroll="5m", scrollId=scroll_id, ignore="404").toJSON();
         }
     }
  
